@@ -43,6 +43,8 @@ case class InclusiveCacheParams(
 
 case object InclusiveCacheKey extends Field[InclusiveCacheParams]
 
+
+//SiFive L2 config
 class WithInclusiveCache(
   nBanks: Int = 1,
   nWays: Int = 8,
@@ -50,12 +52,14 @@ class WithInclusiveCache(
   outerLatencyCycles: Int = 40,
   subBankingFactor: Int = 4
 ) extends Config((site, here, up) => {
+
   case InclusiveCacheKey => InclusiveCacheParams(
       sets = (capacityKB * 1024)/(site(CacheBlockBytes) * nWays * nBanks),
       ways = nWays,
       memCycles = outerLatencyCycles,
       writeBytes = site(XLen)/8,
       portFactor = subBankingFactor)
+
   case BankedL2Key => up(BankedL2Key, site).copy(nBanks = nBanks, coherenceManager = { context =>
     implicit val p = context.p
     val sbus = context.tlBusWrapperLocationMap(SBUS)
@@ -72,6 +76,7 @@ class WithInclusiveCache(
       bufOuterInterior,
       bufOuterExterior) = p(InclusiveCacheKey)
 
+    //L2
     val l2 = LazyModule(new InclusiveCache(
       CacheParameters(
         level = 2,
@@ -112,9 +117,15 @@ class WithInclusiveCache(
     l2.node :*= l2_inner_buffer.node
     l2_outer_buffer.node :*= l2.node
 
+    /*
+      
+             lastLevelNode   <--->  l2_outer_buffer  <--->  l2  <--->  l2_inner_buffer  <---> filter <--->       里
+              (cork.node)                                                                                  （subsystem_sbus）
+    */
+
     /* PhysicalFilters need to be on the TL-C side of a CacheCork to prevent Acquire.NtoB -> Grant.toT */
     physicalFilter match {
-      case None => lastLevelNode :*= l2_outer_buffer.node
+      case None => lastLevelNode :*= l2_outer_buffer.node //这个
       case Some(fp) => {
         val physicalFilter = LazyModule(new PhysicalFilter(fp.copy(controlBeatBytes = cbus.beatBytes)))
         lastLevelNode :*= physicalFilter.node :*= l2_outer_buffer.node
@@ -130,5 +141,7 @@ class WithInclusiveCache(
 
     ElaborationArtefacts.add("l2.json", l2.module.json)
     (filter.node, lastLevelNode, None)
-  })
+     //里接口       外接口
+  })//end of case BankedL2Key
+  
 })
