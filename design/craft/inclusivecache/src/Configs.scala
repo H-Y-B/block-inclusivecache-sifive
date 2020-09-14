@@ -60,7 +60,12 @@ class WithInclusiveCache(
       writeBytes = site(XLen)/8,
       portFactor = subBankingFactor)
 
-  case BankedL2Key => up(BankedL2Key, site).copy(nBanks = nBanks, coherenceManager = { context =>
+  case BankedL2Key => up(BankedL2Key, site).copy(
+
+
+    nBanks = nBanks, 
+
+    coherenceManager = { context =>
     implicit val p = context.p
     val sbus = context.tlBusWrapperLocationMap(SBUS)
     val cbus = context.tlBusWrapperLocationMap.lift(CBUS).getOrElse(sbus)
@@ -142,6 +147,9 @@ class WithInclusiveCache(
     ElaborationArtefacts.add("l2.json", l2.module.json)
     (filter.node, lastLevelNode, None)
      //里接口       外接口
-  })//end of case BankedL2Key
+  }//end of coherenceManager
+
+
+ )//end of case BankedL2Key
   
 })
