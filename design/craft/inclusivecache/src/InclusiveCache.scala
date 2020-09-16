@@ -220,10 +220,10 @@ class InclusiveCache(
       out.c.bits.address := params.restoreAddress(scheduler.io.out.c.bits.address)
 
       scheduler
-    }
+    }//end map
 
     def json = s"""{"banks":[${mods.map(_.json).mkString(",")}]"""
-  }
+  }//end module
 
   def logicalTreeNode: InclusiveCacheLogicalTreeNode = new InclusiveCacheLogicalTreeNode(
     device = device,
